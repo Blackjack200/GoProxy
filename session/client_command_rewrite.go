@@ -10,10 +10,15 @@ type ClientCommandRewrite struct{}
 func (ClientCommandRewrite) Handle(_ Session, pk *packet.Packet) bool {
 	switch pk2 := (*pk).(type) {
 	case *packet.AvailableCommands:
-		pk2.Commands = append(pk2.Commands, protocol.Command{
-			Name:        "goproxy",
-			Description: "GoProxy",
-		})
+		commands := pk2.Commands
+
+		for name := range Commands {
+			commands = append(commands, protocol.Command{
+				Name:        "__" + name,
+				Description: "GoProxy Command",
+			})
+		}
+		pk2.Commands = commands
 	}
 	return false
 }

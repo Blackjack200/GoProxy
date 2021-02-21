@@ -26,6 +26,8 @@ func main() {
 		panic(tkErr)
 	}
 
+	session.InitializeCommand()
+
 	logrus.Info("Start GoProxy on " + config.Bind() + " -> " + config.Remote())
 
 	listener, err := minecraft.ListenConfig{
