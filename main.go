@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/oauth2"
 	"proxy/config"
 	"proxy/session"
 )
@@ -43,11 +42,11 @@ func main() {
 	for {
 		conn, err2 := listener.Accept()
 		if err2 == nil {
-			go handleConnection(conn.(*minecraft.Conn), config.Token, config.Remote())
+			go handleConnection(conn.(*minecraft.Conn), config.Remote())
 		}
 	}
 }
 
-func handleConnection(conn *minecraft.Conn, token *oauth2.Token, remote string) {
-	session.NewSession(conn, token, remote, config.BypassResourcePack())
+func handleConnection(conn *minecraft.Conn, remote string) {
+	session.NewSession(conn, config.Token, remote, config.BypassResourcePack())
 }

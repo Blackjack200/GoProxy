@@ -5,13 +5,12 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
-type ClientCommandRewrite struct{}
+type ServerCommandRewrite struct{}
 
-func (ClientCommandRewrite) Handle(_ Session, pk *packet.Packet) bool {
-	switch pk2 := (*pk).(type) {
-	case *packet.AvailableCommands:
+func (ServerCommandRewrite) Handle(_ *Session, pk *packet.Packet) bool {
+	pk2, ok := (*pk).(*packet.AvailableCommands)
+	if ok {
 		commands := pk2.Commands
-
 		for name := range Commands {
 			commands = append(commands, protocol.Command{
 				Name:        "__" + name,
@@ -20,5 +19,5 @@ func (ClientCommandRewrite) Handle(_ Session, pk *packet.Packet) bool {
 		}
 		pk2.Commands = commands
 	}
-	return false
+	return HandlerContinue
 }

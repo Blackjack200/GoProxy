@@ -5,5 +5,5 @@ import (
 )
 
 type Handler interface {
-	Handle(s Session, pk *packet.Packet) bool
+	Handle(s *Session, pk *packet.Packet) bool
 }

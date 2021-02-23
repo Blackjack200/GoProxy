@@ -9,14 +9,6 @@ import (
 	"time"
 )
 
-type Session struct {
-	Client               *minecraft.Conn
-	Server               *minecraft.Conn
-	Translator           *translator
-	ClientPacketRewriter map[string]Handler
-	ServerPacketRewriter map[string]Handler
-}
-
 func NewSession(conn *minecraft.Conn, token *oauth2.Token, remote string, bypassResourcePacket bool) *Session {
 	var ts oauth2.TokenSource = nil
 	if token != nil {
@@ -31,10 +23,11 @@ func NewSession(conn *minecraft.Conn, token *oauth2.Token, remote string, bypass
 		EnableClientCache: false,
 	}
 
-	server, _ := dialer.Dial("raknet", remote)
+	server, de := dialer.Dial("raknet", remote)
 
 	if server == nil {
-		go disconnect(conn, "ProxyServer Timeout", true)
+		disconnect(conn, "ProxyServer Timeout", true)
+		panic(de)
 		return nil
 	}
 
@@ -45,24 +38,24 @@ func NewSession(conn *minecraft.Conn, token *oauth2.Token, remote string, bypass
 		})
 	}
 
-	s := Session{
+	s := &Session{
 		Client: conn,
 		Server: server,
 	}
 
-	s.ServerPacketRewriter = make(map[string]Handler)
-	s.ServerPacketRewriter["broken"] = &ServerBrokenPacketListener{}
-	s.ServerPacketRewriter["command"] = &ClientCommandRewrite{}
-	s.ServerPacketRewriter["velocity"] = &Velocity{}
+	initializeClientPacketRewriter(s)
+	initializeServerPacketRewriter(s)
 
-	s.ClientPacketRewriter = make(map[string]Handler)
-	s.ClientPacketRewriter["command"] = &ClientCommandListener{}
-	s.ClientPacketRewriter["attack"] = &DoubleAttack{}
-
-	initializeSession(s)
+	go initializeSession(s)
 
 	s.Translator = newTranslator(conn.GameData())
 	s.Translator.updateTranslatorData(server.GameData())
+
+	_ = s.Client.WritePacket(&packet.SetDifficulty{Difficulty: uint32(s.Server.GameData().Difficulty)})
+	_ = s.Client.WritePacket(&packet.GameRulesChanged{GameRules: s.Server.GameData().GameRules})
+	_ = s.Client.WritePacket(&packet.SetPlayerGameType{GameType: s.Server.GameData().PlayerGameMode})
+	_ = s.Client.WritePacket(&packet.MovePlayer{Position: s.Server.GameData().PlayerPosition})
+	_ = s.Client.WritePacket(&packet.SetSpawnPosition{Position: s.Server.GameData().WorldSpawn})
 
 	go func() {
 		defer disconnect(s.Client, "ProxyServer Error", false)
@@ -70,7 +63,7 @@ func NewSession(conn *minecraft.Conn, token *oauth2.Token, remote string, bypass
 		for {
 			pk, err := conn.ReadPacket()
 			if pk != nil && err == nil {
-				if !handlePacket(s.ClientPacketRewriter, s, pk) {
+				if !handlePacket(s.ClientPacketRewriter, s, &pk) {
 					s.Translator.translatePacket(&pk)
 					_ = s.Server.WritePacket(pk)
 				}
@@ -83,20 +76,20 @@ func NewSession(conn *minecraft.Conn, token *oauth2.Token, remote string, bypass
 		for {
 			pk, err := s.Server.ReadPacket()
 			if pk != nil && err == nil {
-				if !handlePacket(s.ServerPacketRewriter, s, pk) {
+				if !handlePacket(s.ServerPacketRewriter, s, &pk) {
 					s.Translator.translatePacket(&pk)
 					_ = s.Client.WritePacket(pk)
 				}
 			}
 		}
 	}()
-	return &s
+	return s
 }
 
-func handlePacket(rewriter map[string]Handler, s Session, pk packet.Packet) bool {
+func handlePacket(rewriter map[string]Handler, s *Session, pk *packet.Packet) bool {
 	drop := false
 	for _, r := range rewriter {
-		drop = r.Handle(s, &pk) || drop
+		drop = r.Handle(s, pk) || drop
 	}
 	return drop
 }
@@ -112,22 +105,18 @@ func disconnect(conn *minecraft.Conn, msg string, start bool) {
 	})
 }
 
-func initializeSession(s Session) {
+func initializeSession(s *Session) {
 	g := sync.WaitGroup{}
 	g.Add(2)
 	go func() {
-		err := s.Client.StartGameTimeout(s.Server.GameData(), time.Second*2)
-		if err != nil {
-			s.Client.StartGame(s.Client.GameData())
-		}
-
+		_ = s.Client.StartGame(minecraft.GameData{})
 		logrus.Info("Downstream Connected: " + s.Client.IdentityData().DisplayName)
 		g.Done()
 	}()
+
 	go func() {
 		_ = s.Server.DoSpawnTimeout(time.Minute)
 		logrus.Info("Upstream Connected: " + s.Client.IdentityData().DisplayName)
 		g.Done()
 	}()
-	g.Wait()
 }
