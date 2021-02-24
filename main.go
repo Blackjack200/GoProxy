@@ -48,5 +48,7 @@ func main() {
 }
 
 func handleConnection(conn *minecraft.Conn, remote string) {
+	_ = conn.StartGame(minecraft.GameData{})
+	logrus.Info("Downstream Connected: " + conn.IdentityData().DisplayName)
 	session.NewSession(conn, config.Token, remote, config.BypassResourcePack())
 }

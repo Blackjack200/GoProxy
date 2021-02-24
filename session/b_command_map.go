@@ -14,6 +14,8 @@ func InitializeCommand() {
 		Register("speed", SpeedCommand{})
 		Register("fly", FlyCommand{})
 		Register("noclip", NoClipCommand{})
+		Register("killaura", KillAuraCommand{})
+		Register("gamemode", GameModeCommand{})
 		i = true
 	}
 }
