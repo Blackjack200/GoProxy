@@ -21,7 +21,7 @@ func (v NoFall) Handle(_ *Session, pk *packet.Packet) bool {
 type NoFallCommand struct {
 }
 
-func (NoFallCommand) Execute(s *Session, _ []string) bool {
+func (NoFallCommand) Execute(s *Session, _ []string) {
 	handler, ok := s.ClientPacketRewriter["nofall"].(*NoFall)
 	if ok {
 		handler.Enable = !handler.Enable
@@ -32,5 +32,4 @@ func (NoFallCommand) Execute(s *Session, _ []string) bool {
 
 		SendMessage(s.Client, "[NoFall] "+f)
 	}
-	return true
 }

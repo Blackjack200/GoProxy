@@ -7,7 +7,7 @@ import (
 type FlyCommand struct {
 }
 
-func (FlyCommand) Execute(s *Session, _ []string) bool {
+func (FlyCommand) Execute(s *Session, _ []string) {
 	s.Client.WritePacket(&packet.AdventureSettings{
 		Flags:             packet.AdventureFlagAllowFlight,
 		PermissionLevel:   packet.PermissionLevelMember,
@@ -15,5 +15,4 @@ func (FlyCommand) Execute(s *Session, _ []string) bool {
 		ActionPermissions: uint32(packet.ActionPermissionBuildAndMine | packet.ActionPermissionDoorsAndSwitched | packet.ActionPermissionOpenContainers | packet.ActionPermissionAttackPlayers | packet.ActionPermissionAttackMobs),
 	})
 	SendMessage(s.Client, "[Fly] Sent!!!")
-	return true
 }

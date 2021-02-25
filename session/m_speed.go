@@ -10,9 +10,9 @@ import (
 type SpeedCommand struct {
 }
 
-func (at SpeedCommand) Execute(s *Session, args []string) bool {
-	if len(args) >= 2 {
-		speed, _ := strconv.ParseFloat(args[1], 32)
+func (at SpeedCommand) Execute(s *Session, args []string) {
+	if len(args) >= 1 {
+		speed, _ := strconv.ParseFloat(args[0], 32)
 		s.Client.WritePacket(&packet.UpdateAttributes{
 			EntityRuntimeID: s.Client.GameData().EntityRuntimeID,
 			Attributes: []protocol.Attribute{{
@@ -43,7 +43,6 @@ func (at SpeedCommand) Execute(s *Session, args []string) bool {
 				Default: 0.02,
 			}},
 		})
-		SendMessage(s.Client, "[Speed] Set to "+args[1])
+		SendMessage(s.Client, "[Speed] Set to "+args[0])
 	}
-	return true
 }

@@ -32,14 +32,13 @@ func (t RateAttack) Handle(s *Session, pk *packet.Packet) bool {
 type RateCommand struct {
 }
 
-func (at RateCommand) Execute(s *Session, args []string) bool {
-	if len(args) >= 2 {
+func (at RateCommand) Execute(s *Session, args []string) {
+	if len(args) >= 1 {
 		handler, ok := s.ClientPacketRewriter["attack"].(*RateAttack)
 		if ok {
-			r, _ := strconv.Atoi(args[1])
+			r, _ := strconv.Atoi(args[0])
 			handler.Repeat = r
-			SendMessage(s.Client, "[Attack] Set to "+args[1])
+			SendMessage(s.Client, "[Attack] Set to "+args[0])
 		}
 	}
-	return true
 }

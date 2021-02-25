@@ -22,7 +22,7 @@ func (v Velocity) Handle(_ *Session, pk *packet.Packet) bool {
 type VelocityCommand struct {
 }
 
-func (VelocityCommand) Execute(s *Session, _ []string) bool {
+func (VelocityCommand) Execute(s *Session, _ []string) {
 	handler, ok := s.ServerPacketRewriter["velocity"].(*Velocity)
 	if ok {
 		handler.Enable = !handler.Enable
@@ -32,5 +32,4 @@ func (VelocityCommand) Execute(s *Session, _ []string) bool {
 		}
 		SendMessage(s.Client, "[Velocity] "+f)
 	}
-	return true
 }

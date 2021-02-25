@@ -3,6 +3,7 @@ package session
 import (
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"github.com/scylladb/go-set/i64set"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	"sync"
@@ -16,8 +17,8 @@ const (
 
 func initializeClientPacketRewriter(s *Session) {
 	s.ClientPacketRewriter = make(map[string]Handler)
-	s.ClientPacketRewriter["client"] = &BuiltinClientPacketHandler{}
-	s.ClientPacketRewriter["command"] = &ClientCommandListener{}
+	s.ClientPacketRewriter["client"] = &PlayerClientPacketHandler{}
+	s.ClientPacketRewriter["command"] = &PlayerCommandListener{}
 	s.ClientPacketRewriter["move"] = &ClientMovePacket{
 		s.Server.GameData().ServerAuthoritativeMovementMode != 0,
 	}
@@ -28,7 +29,7 @@ func initializeClientPacketRewriter(s *Session) {
 func initializeServerPacketRewriter(s *Session) {
 	s.ServerPacketRewriter = make(map[string]Handler)
 	s.ServerPacketRewriter["broken"] = &ServerBrokenPacketListener{}
-	s.ServerPacketRewriter["command"] = &ServerCommandRewrite{}
+	s.ServerPacketRewriter["command"] = &ServerCommandListener{}
 	s.ServerPacketRewriter["velocity"] = &Velocity{}
 	s.ServerPacketRewriter["killaura"] = &KillAura{
 		Enable: false,
@@ -68,7 +69,10 @@ func NewSession(conn *minecraft.Conn, token *oauth2.Token, remote string, bypass
 	s := &Session{
 		Client: conn,
 		Server: server,
-		Player: ProxiedPlayer{HeldSlot: 0},
+		Player: ProxiedPlayer{
+			HeldSlot: 0,
+			Entities: i64set.New(),
+		},
 	}
 
 	initializeClientPacketRewriter(s)
@@ -86,12 +90,13 @@ func NewSession(conn *minecraft.Conn, token *oauth2.Token, remote string, bypass
 	_ = s.Client.WritePacket(&packet.SetSpawnPosition{Position: s.Server.GameData().WorldSpawn})
 
 	go func() {
-		defer disconnect(s.Client, "ProxyServer Error", false)
+		defer s.Close("ProxyServer Error", false)
 		//real client -> remote server
 		for {
 			pk, err := conn.ReadPacket()
 			if pk != nil && err == nil {
 				s.Translator.translatePacket(&pk)
+
 				if !handlePacket(s.ClientPacketRewriter, s, &pk) {
 					_ = s.Server.WritePacket(pk)
 				}
@@ -99,7 +104,7 @@ func NewSession(conn *minecraft.Conn, token *oauth2.Token, remote string, bypass
 		}
 	}()
 	go func() {
-		defer disconnect(s.Client, "ProxyServer Error", false)
+		defer s.Close("ProxyServer Error", false)
 		//real client <- remote server
 		for {
 			pk, err := s.Server.ReadPacket()
@@ -116,21 +121,10 @@ func NewSession(conn *minecraft.Conn, token *oauth2.Token, remote string, bypass
 
 func handlePacket(rewriter map[string]Handler, s *Session, pk *packet.Packet) bool {
 	drop := false
-	for _, r := range rewriter {
-		drop = r.Handle(s, pk) || drop
+	for _, handler := range rewriter {
+		drop = handler.Handle(s, pk) || drop
 	}
 	return drop
-}
-
-func disconnect(conn *minecraft.Conn, msg string, start bool) {
-	if start {
-		_ = conn.StartGame(conn.GameData())
-	}
-
-	conn.WritePacket(&packet.Disconnect{
-		HideDisconnectionScreen: false,
-		Message:                 msg,
-	})
 }
 
 func initializeSession(s *Session) {
@@ -139,6 +133,10 @@ func initializeSession(s *Session) {
 
 	go func() {
 		_ = s.Server.DoSpawnTimeout(time.Minute)
+		s.Player.Entities.Each(func(id int64) bool {
+			s.Client.WritePacket(&packet.RemoveActor{EntityUniqueID: id})
+			return true
+		})
 		logrus.Info("Upstream Connected: " + s.Client.IdentityData().DisplayName)
 		g.Done()
 	}()
