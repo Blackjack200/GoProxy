@@ -1,10 +1,11 @@
 package session
 
 import (
+	"fmt"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"github.com/sandertv/gophertunnel/minecraft/text"
 	"runtime"
-	"strconv"
 )
 
 type Command interface {
@@ -48,7 +49,7 @@ func SendMessage(conn *minecraft.Conn, message string) {
 	conn.WritePacket(&packet.Text{
 		TextType:   packet.TextTypeChat,
 		SourceName: "GoProxy",
-		Message:    message,
+		Message:    text.Colourf(message),
 	})
 }
 
@@ -58,7 +59,7 @@ type StatusCommand struct {
 func (s2 StatusCommand) Execute(s *Session, _ []string) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	SendMessage(s.Client, strconv.FormatUint(m.Alloc/1024/1024, 10)+"MB")
+	SendMessage(s.Client, fmt.Sprintf("<green>%d</green>MB", m.Alloc/1024/1024))
 }
 
 type GCCommand struct {
@@ -70,11 +71,12 @@ func (s2 GCCommand) Execute(s *Session, _ []string) {
 	before := m.Alloc
 	runtime.GC()
 	runtime.ReadMemStats(&m)
-	SendMessage(s.Client, "Free: "+strconv.FormatUint((before-m.Alloc)/1024/1024, 10)+"MB")
+	SendMessage(s.Client, fmt.Sprintf("Free: <green>%d</green>MB", (before-m.Alloc)/1024/1024))
 }
 
 type PingCommand struct{}
 
 func (PingCommand) Execute(s *Session, _ []string) {
-	SendMessage(s.Client, "Ping: "+strconv.FormatInt(s.Client.Latency().Milliseconds(), 10)+"ms")
+	SendMessage(s.Client, fmt.Sprintf("Proxy Ping: <green>%d</green>ms", s.Client.Latency().Milliseconds()))
+	SendMessage(s.Client, fmt.Sprintf("Server Ping: <green>%d</green>ms", s.Server.Latency().Milliseconds()))
 }

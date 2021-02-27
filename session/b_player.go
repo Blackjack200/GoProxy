@@ -6,6 +6,7 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"github.com/scylladb/go-set/i64set"
+	"github.com/sirupsen/logrus"
 )
 
 type ProxiedPlayer struct {
@@ -54,10 +55,13 @@ func disconnect(conn *minecraft.Conn, msg string, start bool) {
 	_ = conn.Close()
 }
 
-func (s Session) Close(msg string, start bool) {
+func (s Session) Close(msg string, start bool, log bool) {
 	disconnect(s.Client, msg, start)
 	_ = s.Server.Close()
 	_ = s.Client.Close()
+	if log {
+		logrus.Info("Disconnect: " + s.Client.IdentityData().DisplayName)
+	}
 }
 
 type PlayerClientPacketHandler struct{}

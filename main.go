@@ -1,10 +1,12 @@
 package main
 
 import (
-	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sirupsen/logrus"
+	"os"
+	"os/signal"
 	"proxy/config"
-	"proxy/session"
+	"proxy/server"
+	"syscall"
 )
 
 func main() {
@@ -14,41 +16,20 @@ func main() {
 		TimestampFormat: "15:04:05",
 	})
 
-	cfgErr := config.Initialize()
-	tkErr := config.InitializeToken()
-
-	if cfgErr != nil {
-		panic(cfgErr)
-	}
-
-	if tkErr != nil {
-		panic(tkErr)
-	}
-
-	session.InitializeCommand()
-
-	logrus.Info("Start GoProxy on " + config.Bind() + " -> " + config.Remote())
-
-	listener, err := minecraft.ListenConfig{
-		AuthenticationDisabled: config.XBL(),
-		MaximumPlayers:         20,
-		StatusProvider:         minecraft.NewStatusProvider(config.Motd()),
-	}.Listen("raknet", config.Bind())
-
-	if err != nil {
+	if err := config.Initialize(); err != nil {
 		panic(err)
 	}
 
-	for {
-		conn, err2 := listener.Accept()
-		if err2 == nil {
-			go handleConnection(conn.(*minecraft.Conn), config.Remote())
-		}
+	if err := config.InitializeToken(); err != nil {
+		panic(err)
 	}
-}
 
-func handleConnection(conn *minecraft.Conn, remote string) {
-	_ = conn.StartGame(minecraft.GameData{})
-	logrus.Info("Downstream Connected: " + conn.IdentityData().DisplayName)
-	session.NewSession(conn, config.Token, remote, config.BypassResourcePack())
+	sigs := make(chan os.Signal)
+	signal.Notify(sigs, os.Interrupt, os.Kill, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		server.Running = false
+	}()
+
+	server.Start()
 }

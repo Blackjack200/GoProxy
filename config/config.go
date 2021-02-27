@@ -8,12 +8,15 @@ import (
 )
 
 type config struct {
-	Bind         string `json:"bind"`
+	Bind         string `json:"local"`
 	Remote       string `json:"remote"`
-	ProxyXbox    bool   `json:"proxy-xbox-auth"`
-	RemoteXbox   bool   `json:"xbox-auth"`
-	Motd         string `json:"motd"`
+	LocalStatus  bool   `json:"local-status"`
+	LocalMotd    string `json:"local-motd"`
+	ProxySideXBL bool   `json:"proxy-side-xbl"`
+	RemoteXBL    bool   `json:"remote-xbl"`
+	RemoteStatus string `json:"remote-status-addr"`
 	ResourcePack bool   `json:"bypass-resource-pack"`
+	SafeConnect  bool   `json:"safe-connect"`
 }
 
 var (
@@ -30,9 +33,12 @@ func Initialize() error {
 	Cfg = &config{}
 	Cfg.Bind = "0.0.0.0:19132"
 	Cfg.Remote = "127.0.0.1:19133"
-	Cfg.Motd = "GoProxy"
-	Cfg.ProxyXbox = true
-	Cfg.RemoteXbox = false
+	Cfg.LocalMotd = "GoProxy"
+	Cfg.LocalStatus = true
+	Cfg.RemoteStatus = Cfg.Remote
+	Cfg.ProxySideXBL = true
+	Cfg.RemoteXBL = false
+	Cfg.SafeConnect = true
 	Cfg.ResourcePack = true
 
 	if _, s := os.Stat(File); os.IsNotExist(s) {
@@ -59,12 +65,24 @@ func Remote() string {
 	return Cfg.Remote
 }
 
-func XBL() bool {
-	return Cfg.ProxyXbox
+func RemoteStatus() string {
+	return Cfg.RemoteStatus
+}
+
+func ProxySideXBL() bool {
+	return Cfg.ProxySideXBL
 }
 
 func RemoteXBL() bool {
-	return Cfg.RemoteXbox
+	return Cfg.RemoteXBL
+}
+
+func LocalStatus() bool {
+	return Cfg.LocalStatus
+}
+
+func SafeConnect() bool {
+	return Cfg.SafeConnect
 }
 
 func BypassResourcePack() bool {
@@ -72,5 +90,5 @@ func BypassResourcePack() bool {
 }
 
 func Motd() string {
-	return Cfg.Motd
+	return Cfg.LocalMotd
 }
