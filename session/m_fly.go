@@ -7,12 +7,12 @@ import (
 type FlyCommand struct {
 }
 
-func (FlyCommand) Execute(s *Session, _ []string) {
-	s.Client.WritePacket(&packet.AdventureSettings{
+func (FlyCommand) Execute(player *ProxiedPlayer, _ []string) {
+	_ = player.WritePacketToClient(&packet.AdventureSettings{
 		Flags:             packet.AdventureFlagAllowFlight,
 		PermissionLevel:   packet.PermissionLevelMember,
-		PlayerUniqueID:    s.Client.GameData().EntityUniqueID,
+		PlayerUniqueID:    player.ClientGameData().EntityUniqueID,
 		ActionPermissions: uint32(packet.ActionPermissionBuildAndMine | packet.ActionPermissionDoorsAndSwitched | packet.ActionPermissionOpenContainers | packet.ActionPermissionAttackPlayers | packet.ActionPermissionAttackMobs),
 	})
-	SendMessage(s.Client, "[Fly] Sent!!!")
+	player.sendMessage("[Fly] Sent!!!")
 }

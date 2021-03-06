@@ -9,7 +9,7 @@ type ClientMovePacket struct {
 	AuthInput bool
 }
 
-func (c ClientMovePacket) Handle(s *Session, pk *packet.Packet) bool {
+func (c ClientMovePacket) Handle(player *ProxiedPlayer, pk *packet.Packet) bool {
 	if c.AuthInput {
 		p, ok := (*pk).(*packet.MovePlayer)
 		if ok {
@@ -18,8 +18,8 @@ func (c ClientMovePacket) Handle(s *Session, pk *packet.Packet) bool {
 				Yaw:       p.Yaw,
 				Position:  p.Position,
 				HeadYaw:   p.Pitch,
-				InputData: uint64(s.Client.ClientData().CurrentInputMode),
-				InputMode: uint32(s.Client.ClientData().CurrentInputMode),
+				InputData: uint64(player.ClientClientData().CurrentInputMode),
+				InputMode: uint32(player.ClientClientData().CurrentInputMode),
 				PlayMode:  0,
 			}
 		}
@@ -30,7 +30,7 @@ func (c ClientMovePacket) Handle(s *Session, pk *packet.Packet) bool {
 type PlayerCommandListener struct {
 }
 
-func (PlayerCommandListener) Handle(s *Session, pk *packet.Packet) bool {
+func (PlayerCommandListener) Handle(player *ProxiedPlayer, pk *packet.Packet) bool {
 	pk2, ok := (*pk).(*packet.CommandRequest)
 	if ok {
 		//TODO extract command prefix
@@ -39,7 +39,7 @@ func (PlayerCommandListener) Handle(s *Session, pk *packet.Packet) bool {
 			if len(labels) >= 1 {
 				for info, command := range Commands {
 					if strings.EqualFold(info.Name, labels[0]) {
-						go (*command).Execute(s, labels[1:])
+						go command.Execute(player, labels[1:])
 						return HandlerDrop
 					}
 				}

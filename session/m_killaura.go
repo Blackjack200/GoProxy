@@ -12,14 +12,14 @@ type KillAura struct {
 	Rate   uint8
 }
 
-func (k KillAura) Handle(s *Session, pk *packet.Packet) bool {
+func (k KillAura) Handle(player *ProxiedPlayer, pk *packet.Packet) bool {
 	p, ok := (*pk).(*packet.MovePlayer)
 	if ok && k.Enable &&
-		s.Server.GameData().EntityRuntimeID != p.EntityRuntimeID {
-		if distance(s.Player.Position, p.Position) <= 12 {
+		player.ServerGameData().EntityRuntimeID != p.EntityRuntimeID {
+		if distance(player.Position, p.Position) <= 12 {
 			go func() {
 				for i := uint8(0); i < k.Rate; i++ {
-					s.Server.WritePacket(s.Attack(p.EntityRuntimeID))
+					player.Attack(p.EntityRuntimeID)
 				}
 			}()
 		}
@@ -29,8 +29,8 @@ func (k KillAura) Handle(s *Session, pk *packet.Packet) bool {
 
 type KillAuraCommand struct{}
 
-func (KillAuraCommand) Execute(s *Session, args []string) {
-	k, ok := s.ServerPacketRewriter["killaura"].(*KillAura)
+func (KillAuraCommand) Execute(player *ProxiedPlayer, args []string) {
+	k, ok := player.Session.ServerPacketRewriter["killaura"].(*KillAura)
 	if ok {
 		if len(args) == 0 {
 			k.Enable = !k.Enable
@@ -38,12 +38,12 @@ func (KillAuraCommand) Execute(s *Session, args []string) {
 			if !k.Enable {
 				f = "Disable"
 			}
-			SendMessage(s.Client, "[KillAura] "+f)
+			player.sendMessage("[KillAura] " + f)
 		}
 		if len(args) >= 1 {
 			r, _ := strconv.Atoi(args[0])
 			k.Rate = uint8(r)
-			SendMessage(s.Client, "[KillAura] Rate="+strconv.Itoa(int(k.Rate)))
+			player.sendMessage("[KillAura] Rate=" + strconv.Itoa(int(k.Rate)))
 		}
 	}
 }

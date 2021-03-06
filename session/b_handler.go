@@ -5,5 +5,5 @@ import (
 )
 
 type Handler interface {
-	Handle(s *Session, pk *packet.Packet) bool
+	Handle(player *ProxiedPlayer, pk *packet.Packet) bool
 }

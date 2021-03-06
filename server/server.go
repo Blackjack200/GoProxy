@@ -51,7 +51,7 @@ func Start() {
 	for Running {
 		time.Sleep(time.Millisecond * 50)
 	}
-	listener.Close()
+	_ = listener.Close()
 }
 
 func handleConnection(conn *minecraft.Conn, remote string, src *oauth2.TokenSource, safe bool) {

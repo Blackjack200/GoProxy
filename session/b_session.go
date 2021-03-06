@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
-	"github.com/scylladb/go-set/i64set"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	"sync"
@@ -15,53 +14,50 @@ const (
 	HandlerContinue = false
 )
 
-func initializeSession(s *Session, safe bool) {
+func initializePlayer(player *ProxiedPlayer, safe bool) {
 	g := sync.WaitGroup{}
 	if safe {
 		g.Add(2)
 	} else {
 		g.Add(3)
 		go func() {
-			if err := s.Client.StartGame(s.Server.GameData()); err != nil {
+			if err := player.ClientConn().StartGame(player.ServerConn().GameData()); err != nil {
 				panic(err)
 			}
-			logrus.Info("Downstream Connected: " + s.Client.IdentityData().DisplayName)
+			logrus.Info("Downstream Connected: " + player.ClientConn().IdentityData().DisplayName)
 			g.Done()
 		}()
 	}
 
 	go func() {
-		s.Player.Entities.Each(func(id int64) bool {
-			s.Client.WritePacket(&packet.RemoveActor{EntityUniqueID: id})
-			return true
-		})
+		player.clearEntities()
 		g.Done()
 	}()
 
 	go func() {
-		if err := s.Server.DoSpawn(); err != nil {
+		if err := player.ServerConn().DoSpawn(); err != nil {
 			panic(err)
 		}
-		logrus.Info("Upstream Connected: " + s.Client.IdentityData().DisplayName)
+		logrus.Info("Upstream Connected: " + player.ClientConn().IdentityData().DisplayName)
 		g.Done()
 	}()
 	g.Wait()
 
-	initializePacketTransfer(s)
+	initializePacketTransfer(player)
 }
 
-func initializePacketTransfer(s *Session) {
+func initializePacketTransfer(player *ProxiedPlayer) {
 	go func() {
-		defer s.Close("ProxyServer Disconnect", false, false)
+		defer player.close("ProxyServer Disconnect", false, false)
 		//real client -> remote server
 		for {
-			pk, err := s.Client.ReadPacket()
+			pk, err := player.ClientConn().ReadPacket()
 			if err != nil {
 				return
 			}
-			s.Translator.translatePacket(&pk)
-			if !handlePacket(s.ClientPacketRewriter, s, &pk) {
-				if err := s.Server.WritePacket(pk); err != nil {
+			player.Session.Translator.translatePacket(&pk)
+			if !handlePacket(player.Session.ClientPacketRewriter, player, &pk) {
+				if err := player.WritePacketToServer(pk); err != nil {
 					if _, ok := errors.Unwrap(err).(minecraft.DisconnectError); ok {
 						return
 					}
@@ -70,16 +66,16 @@ func initializePacketTransfer(s *Session) {
 		}
 	}()
 	go func() {
-		defer s.Close("ProxyServer Disconnect", false, true)
+		defer player.close("ProxyServer Disconnect", false, true)
 		//real client <- remote server
 		for {
-			pk, err := s.Server.ReadPacket()
+			pk, err := player.ServerConn().ReadPacket()
 			if err != nil {
 				return
 			}
-			s.Translator.translatePacket(&pk)
-			if !handlePacket(s.ServerPacketRewriter, s, &pk) {
-				if err := s.Client.WritePacket(pk); err != nil {
+			player.Session.Translator.translatePacket(&pk)
+			if !handlePacket(player.Session.ServerPacketRewriter, player, &pk) {
+				if err := player.WritePacketToClient(pk); err != nil {
 					if _, ok := errors.Unwrap(err).(minecraft.DisconnectError); ok {
 						return
 					}
@@ -89,29 +85,29 @@ func initializePacketTransfer(s *Session) {
 	}()
 }
 
-func initializeClientPacketRewriter(s *Session) {
-	s.ClientPacketRewriter = make(map[string]Handler)
-	s.ClientPacketRewriter["client"] = &PlayerClientPacketHandler{}
-	s.ClientPacketRewriter["command"] = &PlayerCommandListener{}
-	s.ClientPacketRewriter["move"] = &ClientMovePacket{
-		s.Server.GameData().ServerAuthoritativeMovementMode != 0,
+func initializeClientPacketRewriter(player *ProxiedPlayer) {
+	player.Session.ClientPacketRewriter = make(map[string]Handler)
+	player.Session.ClientPacketRewriter["client"] = &PlayerClientPacketHandler{}
+	player.Session.ClientPacketRewriter["command"] = &PlayerCommandListener{}
+	player.Session.ClientPacketRewriter["move"] = &ClientMovePacket{
+		player.ServerConn().GameData().ServerAuthoritativeMovementMode != 0,
 	}
-	s.ClientPacketRewriter["attack"] = &RateAttack{}
-	s.ClientPacketRewriter["nofall"] = &NoFall{}
+	player.Session.ClientPacketRewriter["attack"] = &RateAttack{}
+	player.Session.ClientPacketRewriter["nofall"] = &NoFall{}
 }
 
-func initializeServerPacketRewriter(s *Session) {
-	s.ServerPacketRewriter = make(map[string]Handler)
-	s.ServerPacketRewriter["broken"] = &ServerBrokenPacketListener{}
-	s.ServerPacketRewriter["command"] = &ServerCommandListener{}
-	s.ServerPacketRewriter["velocity"] = &Velocity{}
-	s.ServerPacketRewriter["killaura"] = &KillAura{
+func initializeServerPacketRewriter(player *ProxiedPlayer) {
+	player.Session.ServerPacketRewriter = make(map[string]Handler)
+	player.Session.ServerPacketRewriter["broken"] = &ServerBrokenPacketListener{}
+	player.Session.ServerPacketRewriter["command"] = &ServerCommandListener{}
+	player.Session.ServerPacketRewriter["velocity"] = &Velocity{}
+	player.Session.ServerPacketRewriter["killaura"] = &KillAura{
 		Enable: false,
 		Rate:   10,
 	}
 }
 
-func handlePacket(rewriter map[string]Handler, s *Session, pk *packet.Packet) bool {
+func handlePacket(rewriter map[string]Handler, s *ProxiedPlayer, pk *packet.Packet) bool {
 	drop := false
 	for _, handler := range rewriter {
 		drop = handler.Handle(s, pk) || drop
@@ -119,7 +115,7 @@ func handlePacket(rewriter map[string]Handler, s *Session, pk *packet.Packet) bo
 	return drop
 }
 
-func NewSession(conn *minecraft.Conn, token *oauth2.TokenSource, remote string, bypassResourcePacket bool, safe bool) *Session {
+func NewSession(conn *minecraft.Conn, token *oauth2.TokenSource, remote string, bypassResourcePacket bool, safe bool) *ProxiedPlayer {
 	var src oauth2.TokenSource = nil
 	if token != nil {
 		src = *token
@@ -148,36 +144,32 @@ func NewSession(conn *minecraft.Conn, token *oauth2.TokenSource, remote string, 
 		})
 	}
 
-	s := &Session{
+	player := newPlayer(&NetworkSession{
 		Client: conn,
 		Server: server,
-		Player: ProxiedPlayer{
-			HeldSlot: 0,
-			Entities: i64set.New(),
-		},
-	}
+	})
 
-	initializeClientPacketRewriter(s)
-	initializeServerPacketRewriter(s)
+	initializeClientPacketRewriter(player)
+	initializeServerPacketRewriter(player)
 
-	initializeSession(s, safe)
+	initializePlayer(player, safe)
 
-	s.Translator = newTranslator(conn.GameData())
-	s.Translator.updateTranslatorData(server.GameData())
+	player.Session.Translator = newTranslator(conn.GameData())
+	player.Session.Translator.updateTranslatorData(player.ServerGameData())
 
-	_ = s.Client.WritePacket(&packet.SetDifficulty{Difficulty: uint32(s.Server.GameData().Difficulty)})
-	_ = s.Client.WritePacket(&packet.GameRulesChanged{GameRules: s.Server.GameData().GameRules})
-	_ = s.Client.WritePacket(&packet.SetPlayerGameType{GameType: s.Server.GameData().PlayerGameMode})
-	_ = s.Client.WritePacket(&packet.MovePlayer{Position: s.Server.GameData().PlayerPosition})
-	_ = s.Client.WritePacket(&packet.SetSpawnPosition{Position: s.Server.GameData().WorldSpawn})
-	_ = s.Client.WritePacket(&packet.SetTime{Time: int32(s.Server.GameData().Time)})
-	if s.Client.GameData().Dimension != s.Server.GameData().Dimension {
-		_ = s.Client.WritePacket(&packet.ChangeDimension{
-			Dimension: s.Server.GameData().Dimension,
-			Position:  s.Server.GameData().PlayerPosition,
+	_ = player.WritePacketToClient(&packet.SetDifficulty{Difficulty: uint32(player.ServerGameData().Difficulty)})
+	_ = player.WritePacketToClient(&packet.GameRulesChanged{GameRules: player.ServerGameData().GameRules})
+	_ = player.WritePacketToClient(&packet.SetPlayerGameType{GameType: player.ServerGameData().PlayerGameMode})
+	_ = player.WritePacketToClient(&packet.MovePlayer{Position: player.ServerGameData().PlayerPosition})
+	_ = player.WritePacketToClient(&packet.SetSpawnPosition{Position: player.ServerGameData().WorldSpawn})
+	_ = player.WritePacketToClient(&packet.SetTime{Time: int32(player.ServerGameData().Time)})
+	if player.ClientConn().GameData().Dimension != player.ServerGameData().Dimension {
+		_ = player.WritePacketToClient(&packet.ChangeDimension{
+			Dimension: player.ServerGameData().Dimension,
+			Position:  player.ServerGameData().PlayerPosition,
 			Respawn:   false,
 		})
 	}
 
-	return s
+	return player
 }

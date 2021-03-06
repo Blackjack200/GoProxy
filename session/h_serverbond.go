@@ -9,7 +9,7 @@ import (
 
 type ServerBrokenPacketListener struct{}
 
-func (ServerBrokenPacketListener) Handle(_ *Session, pk *packet.Packet) bool {
+func (ServerBrokenPacketListener) Handle(_ *ProxiedPlayer, pk *packet.Packet) bool {
 	switch p2 := (*pk).(type) {
 	case *packet.CraftingData:
 		*pk = &packet.CraftingData{}
@@ -23,7 +23,7 @@ func (ServerBrokenPacketListener) Handle(_ *Session, pk *packet.Packet) bool {
 
 type ServerCommandListener struct{}
 
-func (ServerCommandListener) Handle(_ *Session, pk *packet.Packet) bool {
+func (ServerCommandListener) Handle(_ *ProxiedPlayer, pk *packet.Packet) bool {
 	pk2, ok := (*pk).(*packet.AvailableCommands)
 	if ok {
 		commands := pk2.Commands

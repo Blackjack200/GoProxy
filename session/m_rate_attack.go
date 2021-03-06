@@ -10,7 +10,7 @@ type RateAttack struct {
 	Repeat int
 }
 
-func (t RateAttack) Handle(s *Session, pk *packet.Packet) bool {
+func (t RateAttack) Handle(player *ProxiedPlayer, pk *packet.Packet) bool {
 	switch pk2 := (*pk).(type) {
 	case *packet.LevelSoundEvent:
 		if pk2.SoundType == packet.SoundEventAttackNoDamage {
@@ -21,7 +21,7 @@ func (t RateAttack) Handle(s *Session, pk *packet.Packet) bool {
 		case *protocol.UseItemOnEntityTransactionData:
 			if tr.ActionType == protocol.UseItemOnEntityActionAttack {
 				for i := 0; i < t.Repeat; i++ {
-					s.Server.WritePacket(pk2)
+					_ = player.WritePacketToServer(pk2)
 				}
 			}
 		}
@@ -32,13 +32,13 @@ func (t RateAttack) Handle(s *Session, pk *packet.Packet) bool {
 type RateCommand struct {
 }
 
-func (at RateCommand) Execute(s *Session, args []string) {
+func (RateCommand) Execute(player *ProxiedPlayer, args []string) {
 	if len(args) >= 1 {
-		handler, ok := s.ClientPacketRewriter["attack"].(*RateAttack)
+		handler, ok := player.Session.ClientPacketRewriter["attack"].(*RateAttack)
 		if ok {
 			r, _ := strconv.Atoi(args[0])
 			handler.Repeat = r
-			SendMessage(s.Client, "[Attack] Set to "+args[0])
+			player.sendMessage("[Attack] Set to " + args[0])
 		}
 	}
 }

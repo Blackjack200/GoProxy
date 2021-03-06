@@ -10,11 +10,11 @@ import (
 type SpeedCommand struct {
 }
 
-func (at SpeedCommand) Execute(s *Session, args []string) {
+func (at SpeedCommand) Execute(player *ProxiedPlayer, args []string) {
 	if len(args) >= 1 {
 		speed, _ := strconv.ParseFloat(args[0], 32)
-		s.Client.WritePacket(&packet.UpdateAttributes{
-			EntityRuntimeID: s.Client.GameData().EntityRuntimeID,
+		_ = player.WritePacketToClient(&packet.UpdateAttributes{
+			EntityRuntimeID: player.ClientGameData().EntityRuntimeID,
 			Attributes: []protocol.Attribute{{
 				Name:    "minecraft:movement",
 				Value:   float32(speed),
@@ -23,8 +23,8 @@ func (at SpeedCommand) Execute(s *Session, args []string) {
 				Default: 0.1,
 			}},
 		})
-		s.Client.WritePacket(&packet.UpdateAttributes{
-			EntityRuntimeID: s.Client.GameData().EntityRuntimeID,
+		_ = player.WritePacketToClient(&packet.UpdateAttributes{
+			EntityRuntimeID: player.ClientGameData().EntityRuntimeID,
 			Attributes: []protocol.Attribute{{
 				Name:    "minecraft:underwater_movement",
 				Value:   float32(speed) * 0.2,
@@ -33,8 +33,8 @@ func (at SpeedCommand) Execute(s *Session, args []string) {
 				Default: 0.02,
 			}},
 		})
-		s.Client.WritePacket(&packet.UpdateAttributes{
-			EntityRuntimeID: s.Client.GameData().EntityRuntimeID,
+		_ = player.WritePacketToClient(&packet.UpdateAttributes{
+			EntityRuntimeID: player.ClientGameData().EntityRuntimeID,
 			Attributes: []protocol.Attribute{{
 				Name:    "minecraft:lava_movement",
 				Value:   float32(speed) * 0.2,
@@ -43,6 +43,6 @@ func (at SpeedCommand) Execute(s *Session, args []string) {
 				Default: 0.02,
 			}},
 		})
-		SendMessage(s.Client, "[Speed] Set to "+args[0])
+		player.sendMessage("[Speed] Set to " + args[0])
 	}
 }

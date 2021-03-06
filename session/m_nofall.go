@@ -8,7 +8,7 @@ type NoFall struct {
 	Enable bool
 }
 
-func (v NoFall) Handle(_ *Session, pk *packet.Packet) bool {
+func (v NoFall) Handle(_ *ProxiedPlayer, pk *packet.Packet) bool {
 	if v.Enable {
 		switch pk2 := (*pk).(type) {
 		case *packet.MovePlayer:
@@ -21,8 +21,8 @@ func (v NoFall) Handle(_ *Session, pk *packet.Packet) bool {
 type NoFallCommand struct {
 }
 
-func (NoFallCommand) Execute(s *Session, _ []string) {
-	handler, ok := s.ClientPacketRewriter["nofall"].(*NoFall)
+func (NoFallCommand) Execute(player *ProxiedPlayer, _ []string) {
+	handler, ok := player.Session.ClientPacketRewriter["nofall"].(*NoFall)
 	if ok {
 		handler.Enable = !handler.Enable
 		f := "Enable"
@@ -30,6 +30,6 @@ func (NoFallCommand) Execute(s *Session, _ []string) {
 			f = "Disable"
 		}
 
-		SendMessage(s.Client, "[NoFall] "+f)
+		player.sendMessage("[NoFall] " + f)
 	}
 }

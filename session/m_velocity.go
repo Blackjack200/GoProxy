@@ -9,7 +9,7 @@ type Velocity struct {
 	Enable bool
 }
 
-func (v Velocity) Handle(_ *Session, pk *packet.Packet) bool {
+func (v Velocity) Handle(_ *ProxiedPlayer, pk *packet.Packet) bool {
 	if v.Enable {
 		switch pk2 := (*pk).(type) {
 		case *packet.SetActorMotion:
@@ -22,14 +22,14 @@ func (v Velocity) Handle(_ *Session, pk *packet.Packet) bool {
 type VelocityCommand struct {
 }
 
-func (VelocityCommand) Execute(s *Session, _ []string) {
-	handler, ok := s.ServerPacketRewriter["velocity"].(*Velocity)
+func (VelocityCommand) Execute(player *ProxiedPlayer, _ []string) {
+	handler, ok := player.Session.ServerPacketRewriter["velocity"].(*Velocity)
 	if ok {
 		handler.Enable = !handler.Enable
 		f := "Enable"
 		if !handler.Enable {
 			f = "Disable"
 		}
-		SendMessage(s.Client, "[Velocity] "+f)
+		player.sendMessage("[Velocity] " + f)
 	}
 }
