@@ -30,6 +30,7 @@ func InitializeCommand() {
 		Register("noclip", "Module NoClip", NoClipCommand{})
 		Register("killaura", "Module KillAura", KillAuraCommand{})
 		Register("gamemode", "Module GameMode", GameModeCommand{})
+		Register("highjump", "Module HighJump", HighJumpCommand{})
 		i = true
 	}
 }
