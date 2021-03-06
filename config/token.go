@@ -50,7 +50,7 @@ func InitializeToken() error {
 		Token.TokenType = data.Type
 		Token.Expiry = time.Now().AddDate(100, 0, 0)
 
-		TokenSrc = auth.RefreshTokenSource(Token)
+		TokenSrc = oauth2.StaticTokenSource(Token)
 		logrus.Info("Use cached Token")
 		if err != nil {
 			return err

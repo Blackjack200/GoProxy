@@ -35,7 +35,7 @@ func Start() {
 
 	Running = true
 
-	src := &config.TokenSrc
+	src := config.TokenSrc
 	if !config.RemoteXBL() {
 		src = nil
 	}
@@ -54,7 +54,7 @@ func Start() {
 	_ = listener.Close()
 }
 
-func handleConnection(conn *minecraft.Conn, remote string, src *oauth2.TokenSource, safe bool) {
+func handleConnection(conn *minecraft.Conn, remote string, src oauth2.TokenSource, safe bool) {
 	if safe {
 		go func() {
 			_ = conn.StartGame(conn.GameData())

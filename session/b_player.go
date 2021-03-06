@@ -58,11 +58,6 @@ type ProxiedPlayer struct {
 	Position mgl32.Vec3
 
 	Entities *i64set.Set
-
-	RuntimePlayers      map[uint64]int64
-	ValidRuntimePlayers map[uint64]int64
-	UniquePlayers       map[int64]uint64
-	ValidUniquePlayers  map[int64]uint64
 }
 
 func (player *ProxiedPlayer) Attack(EntityRuntimeId uint64) {
@@ -117,23 +112,15 @@ func (player *ProxiedPlayer) clearEntities() {
 		return true
 	})
 	player.Entities.Clear()
-	player.RuntimePlayers = make(map[uint64]int64)
-	player.ValidRuntimePlayers = make(map[uint64]int64)
-	player.UniquePlayers = make(map[int64]uint64)
-	player.ValidUniquePlayers = make(map[int64]uint64)
 }
 
 func newPlayer(s *NetworkSession) *ProxiedPlayer {
 	return &ProxiedPlayer{
-		Session:             s,
-		HeldSlot:            0,
-		HeldItem:            protocol.ItemStack{},
-		Position:            mgl32.Vec3{},
-		Entities:            i64set.New(),
-		RuntimePlayers:      make(map[uint64]int64),
-		ValidRuntimePlayers: make(map[uint64]int64),
-		UniquePlayers:       make(map[int64]uint64),
-		ValidUniquePlayers:  make(map[int64]uint64),
+		Session:  s,
+		HeldSlot: 0,
+		HeldItem: protocol.ItemStack{},
+		Position: mgl32.Vec3{},
+		Entities: i64set.New(),
 	}
 }
 
@@ -155,19 +142,8 @@ func (PlayerClientPacketHandler) Handle(player *ProxiedPlayer, pk *packet.Packet
 	case *packet.AddPainting:
 		player.Entities.Add(p.EntityUniqueID)
 	case *packet.AddPlayer:
-		player.RuntimePlayers[p.EntityRuntimeID] = p.EntityUniqueID
-		player.UniquePlayers[p.EntityUniqueID] = p.EntityRuntimeID
 		player.Entities.Add(p.EntityUniqueID)
-	case *packet.SetActorMotion:
-		if unique, contains := player.RuntimePlayers[p.EntityRuntimeID]; contains {
-			player.ValidRuntimePlayers[p.EntityRuntimeID] = unique
-			player.ValidUniquePlayers[unique] = p.EntityRuntimeID
-		}
 	case *packet.RemoveActor:
-		if runtime, contains := player.UniquePlayers[p.EntityUniqueID]; contains {
-			delete(player.RuntimePlayers, runtime)
-			delete(player.UniquePlayers, p.EntityUniqueID)
-		}
 		player.Entities.Remove(p.EntityUniqueID)
 	}
 	return HandlerContinue

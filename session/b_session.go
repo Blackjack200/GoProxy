@@ -107,18 +107,18 @@ func initializeServerPacketRewriter(player *ProxiedPlayer) {
 	}
 }
 
-func handlePacket(rewriter map[string]Handler, s *ProxiedPlayer, pk *packet.Packet) bool {
+func handlePacket(rewriter map[string]Handler, player *ProxiedPlayer, pk *packet.Packet) bool {
 	drop := false
 	for _, handler := range rewriter {
-		drop = handler.Handle(s, pk) || drop
+		drop = handler.Handle(player, pk) || drop
 	}
 	return drop
 }
 
-func NewSession(conn *minecraft.Conn, token *oauth2.TokenSource, remote string, bypassResourcePacket bool, safe bool) *ProxiedPlayer {
+func NewSession(conn *minecraft.Conn, token oauth2.TokenSource, remote string, bypassResourcePacket bool, safe bool) *ProxiedPlayer {
 	var src oauth2.TokenSource = nil
 	if token != nil {
-		src = *token
+		src = token
 	}
 
 	dialer := minecraft.Dialer{
@@ -132,7 +132,6 @@ func NewSession(conn *minecraft.Conn, token *oauth2.TokenSource, remote string, 
 	server, dialErr := dialer.Dial("raknet", remote)
 
 	if dialErr != nil {
-		disconnect(conn, "ProxyServer Timeout", true)
 		panic(dialErr)
 		return nil
 	}
@@ -163,6 +162,7 @@ func NewSession(conn *minecraft.Conn, token *oauth2.TokenSource, remote string, 
 	_ = player.WritePacketToClient(&packet.MovePlayer{Position: player.ServerGameData().PlayerPosition})
 	_ = player.WritePacketToClient(&packet.SetSpawnPosition{Position: player.ServerGameData().WorldSpawn})
 	_ = player.WritePacketToClient(&packet.SetTime{Time: int32(player.ServerGameData().Time)})
+
 	if player.ClientConn().GameData().Dimension != player.ServerGameData().Dimension {
 		_ = player.WritePacketToClient(&packet.ChangeDimension{
 			Dimension: player.ServerGameData().Dimension,
