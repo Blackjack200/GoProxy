@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/go-gl/mathgl v1.0.0
+	github.com/google/uuid v1.1.2
 	github.com/sandertv/gophertunnel v1.10.5
 	github.com/scylladb/go-set v1.0.2
 	github.com/sirupsen/logrus v1.8.0

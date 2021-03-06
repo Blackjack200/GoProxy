@@ -14,6 +14,12 @@ const (
 	HandlerContinue = false
 )
 
+var Players sync.Map
+
+func InitializeSessions() {
+	Players = sync.Map{}
+}
+
 func initializePlayer(player *ProxiedPlayer, safe bool) {
 	g := sync.WaitGroup{}
 	if safe {
@@ -58,8 +64,8 @@ func initializePacketTransfer(player *ProxiedPlayer) {
 			player.Session.Translator.translatePacket(&pk)
 			if !handlePacket(player.Session.ClientPacketRewriter, player, &pk) {
 				if err := player.WritePacketToServer(pk); err != nil {
-					if _, ok := errors.Unwrap(err).(minecraft.DisconnectError); ok {
-						return
+					if err2, ok := errors.Unwrap(err).(minecraft.DisconnectError); ok {
+						panic(err2)
 					}
 				}
 			}
@@ -76,8 +82,8 @@ func initializePacketTransfer(player *ProxiedPlayer) {
 			player.Session.Translator.translatePacket(&pk)
 			if !handlePacket(player.Session.ServerPacketRewriter, player, &pk) {
 				if err := player.WritePacketToClient(pk); err != nil {
-					if _, ok := errors.Unwrap(err).(minecraft.DisconnectError); ok {
-						return
+					if err2, ok := errors.Unwrap(err).(minecraft.DisconnectError); ok {
+						panic(err2)
 					}
 				}
 			}
@@ -154,6 +160,7 @@ func NewSession(conn *minecraft.Conn, token oauth2.TokenSource, remote string, b
 	initializePlayer(player, safe)
 
 	player.Session.Translator = newTranslator(conn.GameData())
+
 	player.Session.Translator.updateTranslatorData(player.ServerGameData())
 
 	_ = player.WritePacketToClient(&packet.SetDifficulty{Difficulty: uint32(player.ServerGameData().Difficulty)})
@@ -171,5 +178,6 @@ func NewSession(conn *minecraft.Conn, token oauth2.TokenSource, remote string, b
 		})
 	}
 
+	Players.Store(player.UUID, player)
 	return player
 }

@@ -2,6 +2,7 @@ package session
 
 import (
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
@@ -52,6 +53,7 @@ func (player *ProxiedPlayer) WritePacketToServer(p packet.Packet) error {
 }
 
 type ProxiedPlayer struct {
+	UUID     uuid.UUID
 	Session  *NetworkSession
 	HeldSlot byte
 	HeldItem protocol.ItemStack
@@ -103,6 +105,7 @@ func (player *ProxiedPlayer) close(msg string, start bool, log bool) {
 	_ = player.Session.Client.Close()
 	if log {
 		logrus.Info("Disconnect: " + player.Session.Client.IdentityData().DisplayName)
+		Players.Delete(player.UUID)
 	}
 }
 
@@ -116,6 +119,7 @@ func (player *ProxiedPlayer) clearEntities() {
 
 func newPlayer(s *NetworkSession) *ProxiedPlayer {
 	return &ProxiedPlayer{
+		UUID:     uuid.New(),
 		Session:  s,
 		HeldSlot: 0,
 		HeldItem: protocol.ItemStack{},

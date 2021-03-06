@@ -31,6 +31,7 @@ func Start() {
 		panic(err)
 	}
 
+	session.InitializeSessions()
 	logrus.Info("Start GoProxy on " + config.Bind() + " -> " + config.Remote())
 
 	Running = true
