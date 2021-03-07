@@ -22,6 +22,7 @@ func InitializeCommand() {
 		Register("status", "Show Proxy status", StatusCommand{})
 		Register("ping", "Show Proxy latency", PingCommand{})
 		Register("gc", "Do Garbage Collection with proxy", GCCommand{})
+		Register("transfer", "transfer to other server with proxy", TransferCommand{})
 		Register("velocity", "Module Velocity", VelocityCommand{})
 		Register("attack", "Module RateAttack", RateCommand{})
 		Register("nofall", "Module NoFall", NoFallCommand{})
@@ -69,4 +70,18 @@ type PingCommand struct{}
 func (PingCommand) Execute(player *ProxiedPlayer, _ []string) {
 	player.sendMessage(fmt.Sprintf("Proxy Ping: <green>%d</green>ms", player.ClientConn().Latency().Milliseconds()))
 	player.sendMessage(fmt.Sprintf("Server Ping: <green>%d</green>ms", player.ServerConn().Latency().Milliseconds()))
+}
+
+type TransferCommand struct{}
+
+func (TransferCommand) Execute(player *ProxiedPlayer, args []string) {
+	if len(args) >= 1 {
+		player.sendMessage(fmt.Sprintf("<green>Transfering... %s</green>", args[0]))
+		con, _ := Connect(player.ClientConn(), player.Src, args[0], player.BypassResourcePacket)
+		if con == nil {
+			player.sendMessage("<red>Failed to connect to" + args[0] + "</red>")
+			return
+		}
+		player.Transfer(con)
+	}
 }

@@ -45,7 +45,7 @@ func Start() {
 		for Running {
 			conn, acceptErr := listener.Accept()
 			if acceptErr == nil {
-				go handleConnection(conn.(*minecraft.Conn), config.Remote(), src, config.SafeConnect())
+				go handleConnection(conn.(*minecraft.Conn), config.Remote(), src)
 			}
 		}
 	}()
@@ -55,12 +55,7 @@ func Start() {
 	_ = listener.Close()
 }
 
-func handleConnection(conn *minecraft.Conn, remote string, src oauth2.TokenSource, safe bool) {
-	if safe {
-		go func() {
-			_ = conn.StartGame(conn.GameData())
-			logrus.Info("Downstream Connected: " + conn.IdentityData().DisplayName)
-		}()
-	}
-	session.NewSession(conn, src, remote, config.BypassResourcePack(), safe)
+func handleConnection(conn *minecraft.Conn, remote string, src oauth2.TokenSource) {
+	logrus.Info("Connected: " + conn.IdentityData().DisplayName)
+	session.NewSession(conn, src, remote, config.BypassResourcePack())
 }

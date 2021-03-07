@@ -16,7 +16,6 @@ type config struct {
 	RemoteXBL    bool   `json:"remote-xbl"`
 	RemoteStatus string `json:"remote-status-addr"`
 	ResourcePack bool   `json:"bypass-resource-pack"`
-	SafeConnect  bool   `json:"safe-connect"`
 }
 
 var (
@@ -38,7 +37,6 @@ func Initialize() error {
 	Cfg.RemoteStatus = Cfg.Remote
 	Cfg.ProxySideXBL = true
 	Cfg.RemoteXBL = false
-	Cfg.SafeConnect = true
 	Cfg.ResourcePack = true
 
 	if _, s := os.Stat(File); os.IsNotExist(s) {
@@ -79,10 +77,6 @@ func RemoteXBL() bool {
 
 func LocalStatus() bool {
 	return Cfg.LocalStatus
-}
-
-func SafeConnect() bool {
-	return Cfg.SafeConnect
 }
 
 func BypassResourcePack() bool {

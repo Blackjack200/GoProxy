@@ -3,20 +3,23 @@ package session
 import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
-	"github.com/sirupsen/logrus"
 	"strconv"
 )
 
 type ServerBrokenPacketListener struct{}
 
-func (ServerBrokenPacketListener) Handle(_ *ProxiedPlayer, pk *packet.Packet) bool {
+func (ServerBrokenPacketListener) Handle(player *ProxiedPlayer, pk *packet.Packet) bool {
 	switch p2 := (*pk).(type) {
 	case *packet.CraftingData:
 		*pk = &packet.CraftingData{}
 	case *packet.CreativeContent:
 		*pk = &packet.CreativeContent{}
 	case *packet.Transfer:
-		logrus.Info(p2.Address + ":" + strconv.Itoa(int(p2.Port)))
+		conn, _ := Connect(player.ClientConn(), player.Src, p2.Address+":"+strconv.Itoa(int(p2.Port)), player.BypassResourcePacket)
+		if conn != nil {
+			player.Transfer(conn)
+		}
+		return HandlerDrop
 	}
 	return HandlerContinue
 }
