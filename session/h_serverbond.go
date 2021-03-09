@@ -15,10 +15,7 @@ func (ServerBrokenPacketListener) Handle(player *ProxiedPlayer, pk *packet.Packe
 	case *packet.CreativeContent:
 		*pk = &packet.CreativeContent{}
 	case *packet.Transfer:
-		conn, _ := Connect(player.ClientConn(), player.Src, p2.Address+":"+strconv.Itoa(int(p2.Port)), player.BypassResourcePacket)
-		if conn != nil {
-			player.Transfer(conn)
-		}
+		player.TransferWithMessage(p2.Address + ":" + strconv.Itoa(int(p2.Port)))
 		return HandlerDrop
 	}
 	return HandlerContinue

@@ -1,6 +1,7 @@
 package session
 
 import (
+	"fmt"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
@@ -125,6 +126,16 @@ func (player *ProxiedPlayer) close(msg string, start bool, log bool) {
 		logrus.Info("Disconnect: " + player.Session.Client.IdentityData().DisplayName)
 		Players.Delete(player.UUID)
 	}
+}
+
+func (player *ProxiedPlayer) TransferWithMessage(host string) {
+	player.sendMessage(fmt.Sprintf("<green>Transfering... %s</green>", host))
+	con, _ := Connect(player.ClientConn(), player.Src, host, player.BypassResourcePacket)
+	if con == nil {
+		player.sendMessage("<red>Failed to connect to" + host + "</red>")
+		return
+	}
+	player.Transfer(con)
 }
 
 func (player *ProxiedPlayer) clearEntities() {
