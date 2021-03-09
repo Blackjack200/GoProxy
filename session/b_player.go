@@ -201,9 +201,9 @@ func newPlayer(s *NetworkSession, src oauth2.TokenSource, bp bool) *ProxiedPlaye
 	}
 }
 
-type PlayerClientPacketHandler struct{}
+type ServerPacketHandler struct{}
 
-func (PlayerClientPacketHandler) Handle(player *ProxiedPlayer, pk *packet.Packet) bool {
+func (ServerPacketHandler) Handle(player *ProxiedPlayer, pk *packet.Packet) bool {
 	switch p := (*pk).(type) {
 	case *packet.MobEquipment:
 		player.HeldSlot = p.HotBarSlot
