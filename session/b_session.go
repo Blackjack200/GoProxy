@@ -44,7 +44,6 @@ func initializePacketTransfer(player *ProxiedPlayer) {
 
 func initializeClientPacketRewriter(player *ProxiedPlayer) {
 	player.Session.ClientPacketRewriter = make(map[string]Handler)
-	player.Session.ClientPacketRewriter["client"] = &PlayerClientPacketHandler{}
 	player.Session.ClientPacketRewriter["command"] = &PlayerCommandListener{}
 	player.Session.ClientPacketRewriter["move"] = &ClientMovePacket{
 		player.ServerConn().GameData().ServerAuthoritativeMovementMode != 0,
@@ -55,6 +54,7 @@ func initializeClientPacketRewriter(player *ProxiedPlayer) {
 
 func initializeServerPacketRewriter(player *ProxiedPlayer) {
 	player.Session.ServerPacketRewriter = make(map[string]Handler)
+	player.Session.ServerPacketRewriter["server"] = &ServerPacketHandler{}
 	player.Session.ServerPacketRewriter["broken"] = &ServerBrokenPacketListener{}
 	player.Session.ServerPacketRewriter["command"] = &ServerCommandListener{}
 	player.Session.ServerPacketRewriter["velocity"] = &Velocity{}

@@ -76,12 +76,6 @@ type TransferCommand struct{}
 
 func (TransferCommand) Execute(player *ProxiedPlayer, args []string) {
 	if len(args) >= 1 {
-		player.sendMessage(fmt.Sprintf("<green>Transfering... %s</green>", args[0]))
-		con, _ := Connect(player.ClientConn(), player.Src, args[0], player.BypassResourcePacket)
-		if con == nil {
-			player.sendMessage("<red>Failed to connect to" + args[0] + "</red>")
-			return
-		}
-		player.Transfer(con)
+		player.TransferWithMessage(args[0])
 	}
 }
