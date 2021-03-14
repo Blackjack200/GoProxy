@@ -33,6 +33,7 @@ func initializePacketTransfer(player *ProxiedPlayer) {
 			if !handlePacket(player.Session.ServerPacketRewriter, player, &pk) {
 				if err := player.WritePacketToClient(pk); err != nil {
 					if err2, ok := errors.Unwrap(err).(minecraft.DisconnectError); ok {
+						player.close(err2.Error(), false, false)
 						panic(err2)
 					}
 				}
